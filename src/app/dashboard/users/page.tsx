@@ -1,19 +1,29 @@
 'use client';
 import * as React from 'react';
-import { PlusCircle, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { mockUsers } from '@/lib/mock-data';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import type { Employee } from '@/lib/types';
 
 export default function UsersPage() {
+    const firestore = useFirestore();
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'employees');
+    }, [firestore]);
+
+    const { data: users, isLoading } = useCollection<Employee>(usersQuery);
+
     const getInitials = (name: string) => {
         const names = name.split(' ');
         if (names.length > 1) {
@@ -52,6 +62,10 @@ export default function UsersPage() {
                                 <Label htmlFor="email">Email</Label>
                                 <Input id="email" type="email" placeholder="john@example.com" />
                             </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="password">Password</Label>
+                                <Input id="password" type="password" placeholder="********" />
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="role">Role</Label>
                                 <Select>
@@ -79,6 +93,11 @@ export default function UsersPage() {
                     <CardDescription>A list of all users in the system.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {isLoading ? (
+                         <div className="flex justify-center items-center h-64">
+                            <Loader className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -88,16 +107,16 @@ export default function UsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockUsers.map((user) => (
+                            {users?.map((user) => (
                                 <TableRow key={user.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10 border">
-                                                <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                                <AvatarImage src={`https://picsum.photos/seed/${user.id}/100/100`} alt={user.username} />
+                                                <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="font-medium">{user.name}</div>
+                                                <div className="font-medium">{user.username}</div>
                                                 <div className="text-sm text-muted-foreground">{user.email}</div>
                                             </div>
                                         </div>
@@ -122,6 +141,7 @@ export default function UsersPage() {
                             ))}
                         </TableBody>
                     </Table>
+                    )}
                 </CardContent>
             </Card>
         </div>

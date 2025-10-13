@@ -20,16 +20,33 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { mockStockItems } from "@/lib/mock-data";
-import { ListFilter, Search } from "lucide-react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from 'firebase/firestore';
+import type { StockItem } from "@/lib/types";
+import { ListFilter, Search, Loader } from "lucide-react";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function StockDashboard() {
+  const firestore = useFirestore();
+  const stockItemsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'stockItems');
+  }, [firestore]);
+
+  const { data: stockItems, isLoading } = useCollection<Omit<StockItem, 'imageUrl' | 'imageHint'>>(stockItemsQuery);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(amount);
   };
+  
+  const getImageForStockItem = (itemId: string) => {
+    const numericId = parseInt(itemId, 10);
+    const img = PlaceHolderImages[(numericId - 1) % PlaceHolderImages.length];
+    return img || PlaceHolderImages[0];
+  }
 
   return (
     <div className="space-y-6">
@@ -71,47 +88,56 @@ export default function StockDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="hidden w-[100px] sm:table-cell">
-                  <span className="sr-only">Image</span>
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="hidden md:table-cell">Warehouse</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="hidden text-right md:table-cell">Rate</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockStockItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="hidden sm:table-cell">
-                    <Image
-                      alt={item.name}
-                      className="aspect-square rounded-md object-cover"
-                      height="64"
-                      src={item.imageUrl}
-                      width="64"
-                      data-ai-hint={item.imageHint}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell className="hidden md:table-cell">{item.warehouse}</TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="hidden text-right md:table-cell">{formatCurrency(item.rate)}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={item.quantity > 10 ? "default" : "destructive"}>
-                      {item.quantity > 10 ? "In Stock" : "Low Stock"}
-                    </Badge>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="hidden w-[100px] sm:table-cell">
+                    <span className="sr-only">Image</span>
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="hidden md:table-cell">Warehouse</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">Rate</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {stockItems?.map((item) => {
+                  const imageInfo = getImageForStockItem(item.id);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="hidden sm:table-cell">
+                        <Image
+                          alt={item.name}
+                          className="aspect-square rounded-md object-cover"
+                          height="64"
+                          src={imageInfo.imageUrl}
+                          width="64"
+                          data-ai-hint={imageInfo.imageHint}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.category || 'N/A'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{item.warehouse || 'N/A'}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="hidden text-right md:table-cell">{formatCurrency(item.rate)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={item.quantity > 10 ? "default" : "destructive"}>
+                          {item.quantity > 10 ? "In Stock" : "Low Stock"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

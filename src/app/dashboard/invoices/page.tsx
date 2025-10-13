@@ -1,16 +1,33 @@
+"use client";
+
 import Link from 'next/link';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { Invoice } from '@/lib/types';
+import { format } from 'date-fns';
 
 export default function InvoicesPage() {
-    const mockInvoices = [
-        { id: 'INV-003', customer: 'Prestige Constructions', date: '2023-11-20', total: '₹1,25,000.00', status: 'Paid' },
-        { id: 'INV-002', customer: 'Global Tech Park', date: '2023-11-15', total: '₹45,000.00', status: 'Paid' },
-        { id: 'INV-001', customer: 'Innovate Co-working', date: '2023-11-10', total: '₹88,750.00', status: 'Pending' },
-    ];
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const invoicesQuery = useMemoFirebase(() => {
+        if (!firestore || !user) return null;
+        return query(collection(firestore, 'receipts'), where("employeeId", "==", user.uid));
+    }, [firestore, user]);
+
+    const { data: invoices, isLoading } = useCollection<Invoice>(invoicesQuery);
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+        }).format(amount);
+      };
 
     return (
         <div className="space-y-6">
@@ -32,32 +49,38 @@ export default function InvoicesPage() {
                     <CardDescription>A list of your most recent invoices.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Invoice ID</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="hidden sm:table-cell">Date</TableHead>
-                                <TableHead className="hidden sm:table-cell text-right">Total</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {mockInvoices.map((invoice) => (
-                                <TableRow key={invoice.id}>
-                                    <TableCell className="font-medium">{invoice.id}</TableCell>
-                                    <TableCell>{invoice.customer}</TableCell>
-                                    <TableCell className="hidden sm:table-cell">{invoice.date}</TableCell>
-                                    <TableCell className="hidden sm:table-cell text-right">{invoice.total}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge variant={invoice.status === 'Paid' ? 'default' : 'secondary'}>
-                                            {invoice.status}
-                                        </Badge>
-                                    </TableCell>
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-64">
+                            <Loader className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Invoice ID</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                                    <TableHead className="hidden sm:table-cell text-right">Total</TableHead>
+                                    <TableHead className="text-right">Status</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {invoices?.map((invoice) => (
+                                    <TableRow key={invoice.id}>
+                                        <TableCell className="font-medium">{invoice.id.substring(0, 8)}</TableCell>
+                                        <TableCell>{invoice.customerName}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{format(new Date(invoice.date), "PPP")}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-right">{formatCurrency(invoice.totalAmount)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Badge variant={invoice.status === 'Paid' ? 'default' : 'secondary'}>
+                                                {invoice.status}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </CardContent>
             </Card>
         </div>

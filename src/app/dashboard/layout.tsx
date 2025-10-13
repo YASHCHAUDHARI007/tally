@@ -1,5 +1,7 @@
+"use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Boxes,
   Home,
@@ -8,6 +10,7 @@ import {
   History,
   ReceiptText,
   Settings,
+  Loader,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -21,11 +24,43 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import Header from "@/components/common/header";
-import { mockUsers } from "@/lib/mock-data";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  // Mocking the logged-in user. In a real app, this would come from a session/context.
-  const currentUser = mockUsers[0]; // Admin user for full menu view
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `employees/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: currentUser, isLoading: isEmployeeLoading } = useDoc<Employee>(userDocRef);
+
+  if (isUserLoading || isEmployeeLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.replace("/");
+    return null;
+  }
+
+  // A simple user object to pass to the header, can be expanded later
+  const headerUser = {
+      id: user.uid,
+      name: currentUser?.username || user.email || 'User',
+      email: user.email || '',
+      avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
+      role: currentUser?.role || 'Store'
+  }
 
   return (
     <SidebarProvider>
@@ -46,7 +81,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {['Admin', 'Sales', 'Store'].includes(currentUser.role) && (
+            {['Admin', 'Sales', 'Store'].includes(headerUser.role) && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Barcode Scanner">
                   <Link href="/dashboard/scan">
@@ -56,7 +91,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {['Admin', 'Sales'].includes(currentUser.role) && (
+            {['Admin', 'Sales'].includes(headerUser.role) && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Invoices">
                   <Link href="/dashboard/invoices">
@@ -66,7 +101,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-            {currentUser.role === 'Admin' && (
+            {headerUser.role === 'Admin' && (
               <>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="User Management">
@@ -83,7 +118,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       <span>Logs</span>
                     </Link>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
+                </MenuItem>
               </>
             )}
           </SidebarMenu>
@@ -102,7 +137,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <Header user={currentUser} />
+        <Header user={headerUser} />
         <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </SidebarInset>
     </SidebarProvider>

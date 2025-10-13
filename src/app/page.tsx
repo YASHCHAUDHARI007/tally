@@ -1,11 +1,39 @@
+"use client";
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Boxes } from 'lucide-react';
+import { useAuth } from '@/firebase';
+import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function LoginPage() {
+  const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('admin@tallysync.pro');
+  const [password, setPassword] = useState('password');
+
+  const handleSignIn = () => {
+    if (!email || !password) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Fields',
+        description: 'Please enter both email and password.',
+      });
+      return;
+    }
+    initiateEmailSignIn(auth, email, password);
+    // The onAuthStateChanged listener in FirebaseProvider will handle routing
+    // but we can optimistically navigate.
+    router.push('/dashboard');
+  };
+
   return (
     <main className="flex min-h-screen w-full items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
@@ -23,7 +51,7 @@ export default function LoginPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="admin@example.com" defaultValue="admin@example.com" required />
+              <Input id="email" type="email" placeholder="admin@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -32,10 +60,10 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" required defaultValue="password" />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button asChild className="w-full">
-              <Link href="/dashboard">Sign In</Link>
+            <Button onClick={handleSignIn} className="w-full">
+              Sign In
             </Button>
           </CardContent>
         </Card>

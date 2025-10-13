@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -8,11 +9,15 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Employee entity."
+          "description": "Unique identifier for the Employee entity (should be Firebase Auth UID)."
         },
         "username": {
           "type": "string",
-          "description": "Employee's username for login."
+          "description": "Employee's username."
+        },
+        "email": {
+            "type": "string",
+            "description": "Employee's email for login."
         },
         "role": {
           "type": "string",
@@ -22,6 +27,7 @@
       "required": [
         "id",
         "username",
+        "email",
         "role"
       ]
     },
@@ -29,7 +35,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StockItem",
       "type": "object",
-      "description": "Represents a stock item fetched from Tally Prime.",
+      "description": "Represents a stock item.",
       "properties": {
         "id": {
           "type": "string",
@@ -37,7 +43,7 @@
         },
         "barcode": {
           "type": "string",
-          "description": "Barcode of the stock item (from Tally)."
+          "description": "Barcode of the stock item."
         },
         "name": {
           "type": "string",
@@ -54,6 +60,14 @@
         "gst": {
           "type": "number",
           "description": "GST applicable to the stock item."
+        },
+        "category": {
+            "type": "string",
+            "description": "Category of the stock item."
+        },
+        "warehouse": {
+            "type": "string",
+            "description": "Warehouse location of the item."
         }
       },
       "required": [
@@ -77,34 +91,48 @@
         },
         "employeeId": {
           "type": "string",
-          "description": "Reference to Employee. (Relationship: Employee 1:N Receipt)"
+          "description": "Reference to Employee (Firebase Auth UID)."
         },
-        "customerId": {
-          "type": "string",
-          "description": "The customer id"
+        "customerName": {
+            "type": "string",
+            "description": "The name of the customer."
         },
         "date": {
           "type": "string",
-          "description": "Date of the receipt.",
+          "description": "Date of the receipt (ISO 8601 format).",
           "format": "date-time"
         },
-        "stockItemIds": {
+        "items": {
           "type": "array",
-          "description": "List of stock item ids",
+          "description": "List of items in the receipt.",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+                "itemId": {"type": "string"},
+                "quantity": {"type": "number"},
+                "rate": {"type": "number"},
+                "gst": {"type": "number"}
+            },
+            "required": ["itemId", "quantity", "rate"]
           }
         },
         "totalAmount": {
           "type": "number",
           "description": "Total amount of the receipt."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["Paid", "Pending", "Overdue"]
         }
       },
       "required": [
         "id",
         "employeeId",
         "date",
-        "totalAmount"
+        "totalAmount",
+        "customerName",
+        "items",
+        "status"
       ]
     },
     "ActivityLog": {
@@ -119,60 +147,36 @@
         },
         "employeeId": {
           "type": "string",
-          "description": "Reference to Employee. (Relationship: Employee 1:N ActivityLog)"
+          "description": "Reference to Employee (Firebase Auth UID)."
         },
         "timestamp": {
           "type": "string",
-          "description": "Timestamp of the activity.",
+          "description": "Timestamp of the activity (ISO 8601 format).",
           "format": "date-time"
         },
         "action": {
           "type": "string",
-          "description": "Type of action performed (scan, create receipt, login, etc.)."
+          "description": "Type of action performed."
         },
-        "stockItemId": {
-          "type": "string",
-          "description": "Reference to StockItem, if applicable. (Relationship: StockItem 1:N ActivityLog)"
+        "details": {
+            "type": "string",
+            "description": "Details about the action performed."
         },
-        "receiptId": {
-          "type": "string",
-          "description": "Reference to Receipt, if applicable. (Relationship: Receipt 1:N ActivityLog)"
+        "user": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "role": {"type": "string"}
+            }
         }
       },
       "required": [
         "id",
         "employeeId",
         "timestamp",
-        "action"
-      ]
-    },
-    "Customer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Customer",
-      "type": "object",
-      "description": "Represents a customer.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Customer entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Customer name"
-        },
-        "address": {
-          "type": "string",
-          "description": "Customer address"
-        },
-        "email": {
-          "type": "string",
-          "description": "Customer email",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name"
+        "action",
+        "details",
+        "user"
       ]
     }
   },
@@ -183,96 +187,21 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/employees/{employeeId}",
-        "definition": {
-          "entityName": "Employee",
-          "schema": {
-            "$ref": "#/backend/entities/Employee"
-          },
-          "description": "Stores employee data, including role. Employs path-based ownership for simplified security rules.",
-          "params": [
-            {
-              "name": "employeeId",
-              "description": "The unique identifier for the employee."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/stockItems/{stockItemId}",
-        "definition": {
-          "entityName": "StockItem",
-          "schema": {
-            "$ref": "#/backend/entities/StockItem"
-          },
-          "description": "Stores stock item data fetched from Tally Prime.",
-          "params": [
-            {
-              "name": "stockItemId",
-              "description": "The unique identifier for the stock item."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{employeeId}/receipts/{receiptId}",
-        "definition": {
-          "entityName": "Receipt",
-          "schema": {
-            "$ref": "#/backend/entities/Receipt"
-          },
-          "description": "Stores receipts created by employees. Path-based ownership is enforced, allowing only the employee (identified by employeeId) to access receipts under their path.",
-          "params": [
-            {
-              "name": "employeeId",
-              "description": "The unique identifier for the employee who created the receipt."
-            },
-            {
-              "name": "receiptId",
-              "description": "The unique identifier for the receipt."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{employeeId}/activityLogs/{activityLogId}",
-        "definition": {
-          "entityName": "ActivityLog",
-          "schema": {
-            "$ref": "#/backend/entities/ActivityLog"
-          },
-          "description": "Stores activity logs related to each employee. Path-based ownership ensures that only the employee or admins can access these logs.",
-          "params": [
-            {
-              "name": "employeeId",
-              "description": "The unique identifier for the employee associated with the activity log."
-            },
-            {
-              "name": "activityLogId",
-              "description": "The unique identifier for the activity log entry."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/customers/{customerId}",
-        "definition": {
-          "entityName": "Customer",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Stores customer data. Accessible by employees to create receipts and invoices.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier for the customer."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to support a furniture manufacturing stock and billing web app integrated with Tally Prime, emphasizing security, scalability, and debuggability. It follows the principles of Authorization Independence via denormalization, Structural Segregation, and Access Modeling.\n\nAuthorization Independence is achieved by avoiding `get()` calls in security rules. For example, employee roles, necessary for authorization, are stored directly within the `employees` collection.\n\nStructural Segregation is implemented by storing different data types in separate collections with homogeneous security needs. For example, `stockItems` are stored separately from `activityLogs`. User-owned data, such as receipts, are stored under the `/users/{employeeId}` path to leverage path-based security.\n\nAccess Modeling is standardized using path-based ownership for private data (e.g., `/users/{employeeId}/receipts/{receiptId}`) and leveraging this structure for related entities, like activity logs, improving rule simplicity. \n\nTo support QAPs (Rules are not Filters), the structure uses segregation and explicit role assignments. Listing stock items requires no filtering based on user roles, as all authenticated users can view stock. Segregation also clarifies the scope of list operations - listing receipts under `/users/{employeeId}/receipts` only returns receipts owned by that user.\n"
+    "/employees/{employeeId}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "Stores employee data, including role. Employs path-based ownership for simplified security rules."
+    },
+    "/stockItems/{stockItemId}": {
+      "schema": { "$ref": "#/entities/StockItem" },
+      "description": "Stores stock item data."
+    },
+    "/users/{employeeId}/receipts/{receiptId}": {
+      "schema": { "$ref": "#/entities/Receipt" },
+      "description": "Stores receipts created by employees. Path-based ownership is enforced."
+    },
+    "/users/{employeeId}/activityLogs/{activityLogId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Stores activity logs for each employee."
+    }
   }
 }

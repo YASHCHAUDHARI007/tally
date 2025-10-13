@@ -16,12 +16,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/lib/types";
 import { CreditCard, LogOut, User as UserIcon } from "lucide-react";
+import { getAuth, signOut } from 'firebase/auth';
 
 type UserNavProps = {
   user: User;
 };
 
 export function UserNav({ user }: UserNavProps) {
+  const auth = getAuth();
+
+  const handleSignOut = () => {
+    signOut(auth);
+  };
+
   const getInitials = (name: string) => {
     const names = name.split(' ');
     if (names.length > 1) {
@@ -61,11 +68,9 @@ export function UserNav({ user }: UserNavProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/">
+        <DropdownMenuItem onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
-          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
