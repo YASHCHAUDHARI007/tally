@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Modern Armchair",
+      "imageUrl": "https://picsum.photos/seed/1/400/400",
+      "imageHint": "armchair"
+    },
+    {
+      "id": "2",
+      "description": "Oak Dining Table",
+      "imageUrl": "https://picsum.photos/seed/2/400/400",
+      "imageHint": "dining table"
+    },
+    {
+      "id": "3",
+      "description": "Leather Sofa",
+      "imageUrl": "https://picsum.photos/seed/3/400/400",
+      "imageHint": "leather sofa"
+    },
+    {
+      "id": "4",
+      "description": "Bookshelf",
+      "imageUrl": "https://picsum.photos/seed/4/400/400",
+      "imageHint": "bookshelf"
+    },
+    {
+      "id": "5",
+      "description": "King Size Bed",
+      "imageUrl": "https://picsum.photos/seed/5/400/400",
+      "imageHint": "bed frame"
+    },
+    {
+      "id": "6",
+      "description": "Office Chair",
+      "imageUrl": "https://picsum.photos/seed/6/400/400",
+      "imageHint": "office chair"
+    },
+    {
+      "id": "7",
+      "description": "Coffee Table",
+      "imageUrl": "https://picsum.photos/seed/7/400/400",
+      "imageHint": "coffee table"
+    },
+    {
+      "id": "8",
+      "description": "Wardrobe",
+      "imageUrl": "https://picsum.photos/seed/8/400/400",
+      "imageHint": "wardrobe"
+    }
+  ]
 }
