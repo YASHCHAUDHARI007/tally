@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages employee data, including role-based access control. Admins can create, update, and delete employee records. Sales and Store roles can only read.
+     * @path /employees/{employeeId}
+     * @allow (create) if request.auth.uid != null && request.resource.data.role in ["Admin"]
+     * @allow (get) if request.auth != null
+     * @deny (create) if request.auth.uid == null || !(request.resource.data.role in ["Admin"])
+     * @principle Enforces role-based access control; Admin role required for creation/modification.
+     */
+    match /employees/{employeeId} {
+      function isAdmin() {
+        return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "Admin";
+      }
+
+      function isSales() {
+        return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "Sales";
+      }
+
+      function isStore() {
+        return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "Store";
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Manages stock item data. Stock items are publicly readable but only Admins can create, update, and delete them.
+     * @path /stockItems/{stockItemId}
+     * @allow (get) Allow any signed-in user to read stock items.
+     * @deny (create) Only admins can create stock items.
+     * @principle Stock items are publicly readable; only admins can modify.
+     */
+    match /stockItems/{stockItemId} {
+       function isAdmin() {
+        return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "Admin";
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Manages receipts created by employees.  Only the employee who created the receipt can access it.
+     * @path /users/{employeeId}/receipts/{receiptId}
+     * @allow (create) if request.auth.uid == employeeId
+     * @allow (get) if request.auth.uid == employeeId
+     * @deny (update) if request.auth.uid != employeeId
+     * @principle Enforces document ownership: only the owning employee can access their receipts.
+     */
+    match /users/{employeeId}/receipts/{receiptId} {
+      function isOwner(employeeId) {
+        return request.auth.uid == employeeId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isExistingOwner(employeeId) {
+        return isOwner(employeeId) && exists(/databases/$(database)/documents/users/$(employeeId));
+      }
+
+      allow get: if isSignedIn() && isOwner(employeeId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(employeeId);
+      allow update: if isSignedIn() && isOwner(employeeId);
+      allow delete: if isSignedIn() && isOwner(employeeId);
+    }
+
+    /**
+     * @description Manages activity logs for employees. Only the employee associated with the log can access it.
+     * @path /users/{employeeId}/activityLogs/{activityLogId}
+     * @allow (get) if request.auth.uid == employeeId
+     * @deny (create) if request.auth.uid != employeeId
+     * @principle Enforces document ownership: only the owning employee can access their activity logs.
+     */
+    match /users/{employeeId}/activityLogs/{activityLogId} {
+      function isOwner(employeeId) {
+        return request.auth.uid == employeeId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isExistingOwner(employeeId) {
+        return isOwner(employeeId) && exists(/databases/$(database)/documents/users/$(employeeId));
+      }
+
+      allow get: if isSignedIn() && isOwner(employeeId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(employeeId);
+      allow update: if isSignedIn() && isOwner(employeeId);
+      allow delete: if isSignedIn() && isOwner(employeeId);
+    }
+
+    /**
+     * @description Manages customer data. Customers are publicly readable, but only admins can create, update, and delete them.
+     * @path /customers/{customerId}
+     * @allow (get) if true
+     * @deny (create) if request.auth == null
+     * @principle Customer data is publicly readable; only admins can modify.
+     */
+    match /customers/{customerId} {
+        function isAdmin() {
+        return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "Admin";
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+  }
+}
