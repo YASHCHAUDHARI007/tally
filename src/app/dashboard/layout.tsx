@@ -118,7 +118,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       <span>Logs</span>
                     </Link>
                   </SidebarMenuButton>
-                </MenuItem>
+                </SidebarMenuItem>
               </>
             )}
           </SidebarMenu>
